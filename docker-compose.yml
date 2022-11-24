@@ -1,0 +1,93 @@
+# docker compose version
+version: '3'
+
+# containers
+services:
+  postgres:
+    image: 'postgres:14'
+    # setting a value to env variable 
+    # note - sets a variable in the container at run time of Container only
+    # this variable will not get save in our code so it safe that way
+    environment:
+      # note - don't have to hard code a value here if it is store in our project file
+      - POSTGRES_PASSWORD=postgres_password
+    
+  
+  redis:
+    image: 'redis:latest'
+  
+  nginx:
+    # to make sure `api` and `client` are up for the task before `nginx` starts up
+    depends_on:
+      - api
+      - client
+
+    # we want this service to always run all the time since its routing traffic
+    restart: always
+
+    build:
+      dockerfile: Dockerfile.dev
+
+      context: ./nginx
+    
+    ports:
+      - '3050:80'
+
+  api:
+    build:
+      # dockerfile is to specify name of the file - dockerfile.dev
+      dockerfile: Dockerfile.dev
+
+      # context property is to specify the particular directory to build the image from
+      context: ./server
+    
+    # volumes is to sync any new changes in our code without rebuild image again
+    volumes:
+      # Don't overide this dir inside our server container, exclude this dir.
+      # NOTE - With this configuration of our docker-compose.yml, 
+      # whenever we add dependencies during development to our server app, 
+      # we will have to rebuild the image and container for our server app 
+      # (as we are not watching the node_modules folder) by docker-compose up --build
+      - /app/node_modules
+
+      # Creating a Reference here from Container to our Project Dir 
+      # instead of copying all files so not to rebuild image again.
+      # note - whenever our application tries to access anything from 'app' dir inside the container
+      # except from the node_modules dir, it will get redirected to our 'server' dir in our current project folder.
+      - ./server:/app
+
+    environment:
+      # note - host is the Container Service name above
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgres_password
+      - PGPORT=5432
+
+  client:
+    build: 
+      dockerfile: Dockerfile.dev
+      context: ./client
+
+    volumes:
+      # the node_modules directory inside the Container will not get overridden by project's node_modules dir
+      - /app/node_modules
+      - ./client:/app 
+
+    environment:
+    # websocktet connection setup so that our browser connects to the React Dev Server
+    # inside of the Client Container to sync changes and reload the browser
+      - WDS_SOCKET_PORT=0
+
+  
+  worker:
+   
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+

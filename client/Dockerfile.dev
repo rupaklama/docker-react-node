@@ -1,0 +1,23 @@
+# This docker file is only for use during development of our application with following instructions
+
+# STEP 1: Specify a base image
+# Alpine Linux is a light weight image to build Alpine Linux Docker containers. 
+# It's an executable software package that tells Docker and your application how to behave.
+# we need a specific version of Node Alpine Image to avoid bugs. 
+FROM node:16-alpine
+
+# STEP 2: Install dependencies
+# Create a separate directory to hose the copy files as a good practice
+# By default, the copy files are placed in the root directory & can cause issues if other default files have same names
+# note - This working directory will be automatically created if don't exists
+WORKDIR '/app'
+
+# Copy dependencies files from our local repo to our above Working dirctory inside of Container
+# Copy dependencies & install
+COPY ./package.json ./
+RUN npm install
+# Now Copy rest of the files 'src' & 'public' from our local repo dir
+COPY ./ ./
+
+# STEP 3: Default command to run when the Container is first created
+CMD ["npm", "run","start"]
