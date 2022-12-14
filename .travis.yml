@@ -1,0 +1,28 @@
+sudo: required
+
+services:
+  - docker
+
+# Run Tests in the Dev Environment 
+before_install:
+  - docker build -t rupakl/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  - docker run -e CI=true rupakl/react-test npm test
+
+# create a build images after passing all our tests for the production 
+after_success:
+  # uses default Dockerfile in our dir
+  - docker build -t rupakl/multi-client ./client
+  - docker build -t rupakl/multi-nginx ./nginx
+  - docker build -t rupakl/multi-server ./server
+  - docker build -t rupakl/multi-worker ./worker
+  
+  # Log in to docker CLI with one single command
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+
+  # push build images to docker hub
+  - docker push rupakl/multi-client
+  - docker push rupakl/multi-nginx
+  - docker push rupakl/multi-server
+  - docker push rupakl/multi-worker
